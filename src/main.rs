@@ -1,9 +1,9 @@
-use crossterm::{cursor, queue, terminal::{self, ClearType}};
+use crossterm::{cursor, event::{self, Event, KeyCode}, queue, terminal::{
+        self,
+        ClearType,
+    }};
 
-use std::{
-    io::{stdout},
-    fmt,
-};
+use std::{fmt, io::{Write, stdout}};
 
 #[derive(Debug, Copy, Clone)]
 struct Cell {
@@ -18,6 +18,7 @@ struct Note {
 
 struct Tracker {
     tracks: Vec<Cell>,
+    running: bool,
 }
 
 impl fmt::Display for Cell {
@@ -55,10 +56,30 @@ fn key_to_string(key: u8) -> String {
 }
 
 impl Tracker {
-    fn new() -> Tracker {
-        Tracker {
+    fn new() -> crossterm::Result<Tracker> {
+        terminal::enable_raw_mode()?;
+        queue!(
+            stdout(),
+            terminal::EnterAlternateScreen,
+            cursor::Hide
+        )?;
+        stdout().flush()?;
+        Ok(Tracker {
             tracks: vec![Cell{ note: None }; 32],
+            running: true,
+        })
+    }
+
+    fn process_event(&mut self) -> crossterm::Result<()> {
+        match event::read()? {
+            Event::Key(event) => {
+                if event.code == KeyCode::Char('q') {
+                    self.running = false;
+                }
+            },
+            _ => {},
         }
+        Ok(())
     }
 
     fn draw(&self) -> crossterm::Result<()> {
@@ -68,14 +89,28 @@ impl Tracker {
             cursor::MoveTo(0,0)
         )?;
         for cell in &self.tracks {
-            println!("{}", cell);
+            write!(stdout(), "{}", cell)?;
+            queue!(stdout(), cursor::MoveToNextLine(1))?;
         }
+        stdout().flush()?;
         Ok(())
     }
 }
 
+impl Drop for Tracker {
+    fn drop(&mut self) {
+        queue!(
+            stdout(),
+            terminal::LeaveAlternateScreen,
+            cursor::Show
+        ).unwrap();
+        stdout().flush().unwrap();
+        terminal::disable_raw_mode().unwrap();
+    }
+}
+
 fn main() -> crossterm::Result<()>{
-    let mut tracker = Tracker::new();
+    let mut tracker = Tracker::new()?;
     let mut i = 12;
     for cell in &mut tracker.tracks {
         cell.note = Some(Note {
@@ -84,6 +119,9 @@ fn main() -> crossterm::Result<()>{
         });
         i += 1;
     }
-    tracker.draw()?;
+    while tracker.running {
+        tracker.draw()?;
+        tracker.process_event()?;
+    }
     Ok(())
 }
