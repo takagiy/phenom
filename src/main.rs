@@ -113,10 +113,13 @@ fn main() -> crossterm::Result<()>{
     let mut tracker = Tracker::new()?;
     let mut i = 12;
     for cell in &mut tracker.tracks {
-        cell.note = Some(Note {
-            key: i,
-            inst: 1,
-        });
+        if i % 2 == 0 {
+            cell.note = Some(Note {
+                key: i,
+                inst: 1,
+            });
+        }
+
         i += 1;
     }
     while tracker.running {
