@@ -25,7 +25,7 @@ impl fmt::Display for Cell {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
       match self.note {
           Some(note) => write!(f, "{}", note),
-          None => write!(f, "       ")
+          None => write!(f, ".......")
       }
   }
 }
