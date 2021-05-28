@@ -1,4 +1,4 @@
-use crossterm::{cursor, event::{self, Event, KeyCode}, queue, terminal::{
+use crossterm::{cursor, event::{self, Event, KeyCode}, queue, style::{self, Color, Colors}, terminal::{
         self,
         ClearType,
     }};
@@ -18,6 +18,7 @@ struct Note {
 
 struct Tracker {
     tracks: Vec<Cell>,
+    selection: usize,
     running: bool,
 }
 
@@ -66,6 +67,7 @@ impl Tracker {
         stdout().flush()?;
         Ok(Tracker {
             tracks: vec![Cell{ note: None }; 32],
+            selection: 0,
             running: true,
         })
     }
@@ -73,8 +75,11 @@ impl Tracker {
     fn process_event(&mut self) -> crossterm::Result<()> {
         match event::read()? {
             Event::Key(event) => {
-                if event.code == KeyCode::Char('q') {
-                    self.running = false;
+                match event.code {
+                    KeyCode::Char('q') => self.running = false,
+                    KeyCode::Up if self.selection != 0 => self.selection -= 1,
+                    KeyCode::Down if self.selection != self.tracks.len() - 1 => self.selection += 1,
+                    _ => {},
                 }
             },
             _ => {},
@@ -88,9 +93,12 @@ impl Tracker {
             terminal::Clear(ClearType::All),
             cursor::MoveTo(0,0)
         )?;
-        for cell in &self.tracks {
+        for (i, cell) in self.tracks.iter().enumerate() {
+            if i == self.selection {
+                queue!(stdout(), style::SetColors(Colors::new(Color::White, Color::Black)))?;
+            }
             write!(stdout(), "{}", cell)?;
-            queue!(stdout(), cursor::MoveToNextLine(1))?;
+            queue!(stdout(), style::ResetColor, cursor::MoveToNextLine(1))?;
         }
         stdout().flush()?;
         Ok(())
