@@ -69,6 +69,11 @@ impl Tracker {
                 KeyCode::Char('q') => self.running = false,
                 KeyCode::Up if self.selection != 0 => self.selection -= 1,
                 KeyCode::Down if self.selection != self.tracks.len() - 1 => self.selection += 1,
+                KeyCode::Char(' ') => self.tracks[self.selection].note = None,
+                KeyCode::Char(c) => match char_to_note(c) {
+                    Some(note) => self.tracks[self.selection].note = Some(note),
+                    _ => {}
+                },
                 _ => {}
             },
             _ => {}
@@ -103,6 +108,15 @@ impl Drop for Tracker {
         stdout().flush().unwrap();
         terminal::disable_raw_mode().unwrap();
     }
+}
+
+fn char_to_note(c: char) -> Option<Note> {
+    const BIND: &'static str = "awsedftgyhuj";
+    let key = BIND.find(c);
+    key.map(|key| Note {
+        key: key as u8 + 60,
+        inst: 1,
+    })
 }
 
 fn main() -> crossterm::Result<()> {
